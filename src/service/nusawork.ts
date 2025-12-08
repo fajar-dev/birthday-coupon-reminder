@@ -1,63 +1,85 @@
-import axios from "axios";
+import axios, { AxiosInstance } from 'axios'
 
-const NUSAWORK_API_URL = process.env.NUSAWORK_API_URL || 'https://api.nusawork.com';
-const NUSAWORK_CLIENT_ID = process.env.NUSAWORK_CLIENT_ID || '';
-const NUSAWORK_CLIENT_SECRET = process.env.NUSAWORK_CLIENT_SECRET || '';
+const NUSAWORK_API_URL = process.env.NUSAWORK_API_URL || "https://api.nusawork.com"
+const NUSAWORK_CLIENT_ID = process.env.NUSAWORK_CLIENT_ID || ""
+const NUSAWORK_CLIENT_SECRET = process.env.NUSAWORK_CLIENT_SECRET || ""
 
 export class Nusawork {
-    static async nusaworkToken(): Promise<string> {
-        const res = await axios.post(
-            `${NUSAWORK_API_URL}/auth/api/oauth/token`,
-            {
-                grant_type: 'client_credentials',
-                client_id: NUSAWORK_CLIENT_ID,
-                client_secret: NUSAWORK_CLIENT_SECRET,
+    private static readonly apiUrl = NUSAWORK_API_URL
+    private static readonly clientId = NUSAWORK_CLIENT_ID
+    private static readonly clientSecret = NUSAWORK_CLIENT_SECRET
+
+    private static readonly http: AxiosInstance = axios.create({
+        baseURL: this.apiUrl,
+        headers: {
+            Accept: "application/json",
+        },
+    })
+
+    /**
+     * Ambil access token dari Nusawork menggunakan client credentials.
+     */
+    private static async getToken(): Promise<string> {
+        const res = await this.http.post<any>("/auth/api/oauth/token",{
+            grant_type: "client_credentials",
+            client_id: this.clientId,
+            client_secret: this.clientSecret,
+        },{
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
             },
-            {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-            },
-        );
-        return res.data.access_token;
+        })
+
+        return res.data.access_token as string
     }
 
-    static async getEmployee(): Promise<any> {
-        const token = await this.nusaworkToken();
-        const res = await axios.post(
-            `${NUSAWORK_API_URL}/emp/api/v4.2/client/employee/filter`,
-            {
-                fields: { active_status: ['active'] },
-                is_paginate: false,
-                multi_value: false,
-                currentPage: 1,
+    /**
+     * Ambil list karyawan aktif dari Nusawork.
+     */
+    static async getEmployees(): Promise<any[]> {
+        const token = await this.getToken()
+
+        const res = await this.http.post<any>("/emp/api/v4.2/client/employee/filter", {
+            fields: { active_status: ["active"] },
+            is_paginate: false,
+            multi_value: false,
+            currentPage: 1,
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
             },
-            {
-                headers: {
-                    Authorization:
-                        'Bearer ' + token,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            },
-        );
-        return res.data.data;
+        })
+        
+        return (res?.data?.data as any[]) ?? []
     }
 
-    static async getTodayBirthdayEmployees(): Promise<any[]> {
-        const employees = await this.getEmployee();
-        const today = new Date();
-        const todayMonth = today.getMonth() + 1;
-        const todayDate = today.getDate();
+    /**
+     * Ambil daftar karyawan yang ulang tahun hari ini.
+     */
+    static async getTodayBirthdayEmployees(
+        referenceDate: Date = new Date(),
+        ): Promise<any[]> {
+        const employees = await this.getEmployees()
 
-        const birthdayEmployees = employees.filter((emp: { date_of_birth?: string }) => {
-            if (!emp.date_of_birth) return false;
+        const refMonth = referenceDate.getMonth()
+        const refDate = referenceDate.getDate()
 
-            const dob = new Date(emp.date_of_birth);
-            return dob.getMonth() + 1 === todayMonth && dob.getDate() === todayDate;
-        });
+        const birthdayEmployees = employees.filter((emp: any) => {
+            if (!emp?.date_of_birth) return false
 
-        return birthdayEmployees;
+            const dob = new Date(emp.date_of_birth)
+            if (Number.isNaN(dob.getTime())) return false
+
+            return dob.getMonth() === refMonth && dob.getDate() === refDate
+        })
+
+        return birthdayEmployees.map((emp: any) => ({
+            employee_id: emp.employee_id,
+            full_name: emp.full_name,
+            date_of_birth: emp.date_of_birth,
+            whatsapp: emp.whatsapp,
+        }))
     }
+
 }
-
