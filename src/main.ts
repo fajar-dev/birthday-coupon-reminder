@@ -6,7 +6,7 @@ async function main(): Promise<void> {
     const rows = employees.map(emp => ({
         Name: emp.full_name,
         "Employee ID": emp.employee_id,
-        "Birth Date": formatDateMDY(new Date()),
+        "Birthday Date": formatDateMDY(new Date()),
         Stage: "Pending",
     }));
     if (rows.length === 0) {
