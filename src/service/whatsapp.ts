@@ -30,4 +30,23 @@ export class Whatsapp {
             },
         })
     }
+
+    static async sendReminder(phone: number, name:string): Promise<void> {
+        const payload = {
+        name: "reminder_coupon_birthday",
+        language: { "code": "en" },
+        components: [
+            {
+                type: "header",
+                parameters: [
+                    {
+                        type: "text",
+                        text: name
+                    }
+                ]
+            }
+        ]
+    }
+        await this.sendMessage(phone, "template" , payload)
+    }
 }

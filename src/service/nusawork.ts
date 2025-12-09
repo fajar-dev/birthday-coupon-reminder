@@ -58,28 +58,30 @@ export class Nusawork {
      * Ambil daftar karyawan yang ulang tahun hari ini.
      */
     static async getTodayBirthdayEmployees(
-        referenceDate: Date = new Date(),
-        ): Promise<any[]> {
-        const employees = await this.getEmployees()
+    referenceDate: Date = new Date(),
+): Promise<any[]> {
+    const employees = await this.getEmployees()
 
-        const refMonth = referenceDate.getMonth()
-        const refDate = referenceDate.getDate()
+    const refMonth = referenceDate.getMonth()
+    const refDate = referenceDate.getDate()
 
-        const birthdayEmployees = employees.filter((emp: any) => {
-            if (!emp?.date_of_birth) return false
+    const birthdayEmployees = employees.filter((emp: any) => {
+        if (!emp?.date_of_birth) return false
+        if (emp.status_join === 'Internship') return false
 
-            const dob = new Date(emp.date_of_birth)
-            if (Number.isNaN(dob.getTime())) return false
+        const dob = new Date(emp.date_of_birth)
+        if (Number.isNaN(dob.getTime())) return false
 
-            return dob.getMonth() === refMonth && dob.getDate() === refDate
-        })
+        return dob.getMonth() === refMonth && dob.getDate() === refDate
+    })
 
-        return birthdayEmployees.map((emp: any) => ({
-            employee_id: emp.employee_id,
-            full_name: emp.full_name,
-            date_of_birth: emp.date_of_birth,
-            whatsapp: emp.whatsapp,
-        }))
-    }
+    return birthdayEmployees.map((emp: any) => ({
+        employee_id: emp.employee_id,
+        full_name: emp.full_name,
+        date_of_birth: emp.date_of_birth,
+        whatsapp: emp.whatsapp,
+    }))
+}
+
 
 }
