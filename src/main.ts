@@ -13,42 +13,57 @@ async function main(): Promise<void> {
         Stage: "Pending",
     }));
 
-    if (rows.length === 0) {
-        console.log("No birthdays today");
-        return process.exit(0);
-    }
-
-    await Spreadsheet.write(rows);
-
     const today = new Date();
-    const eightDaysAgo   = new Date(today.getTime() - 8  * 24 * 60 * 60 * 1000);
-    const fifteenDaysAgo = new Date(today.getTime() - 15 * 24 * 60 * 60 * 1000);
-
-    const reminderPromise = handleReminders(eightDaysAgo);
-    const stagePromise    = handleStageChange(fifteenDaysAgo);
+    const ninetyOneDaysAgo = new Date(today.getTime() - 91 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
+    const eightyThreeDaysAgo = new Date(today.getTime() - 83 * 24 * 60 * 60 * 1000);
+    
+    const reminderPromise = handleReminders(eightyThreeDaysAgo, ninetyDaysAgo);
+    const stagePromise    = handleStageChange(ninetyOneDaysAgo);
 
     await Promise.all([reminderPromise, stagePromise]);
+
+    if (rows.length === 0) {
+        console.log("No birthdays today");
+    }else{
+        await Spreadsheet.write(rows);
+    }
 
     console.log("All tasks finished. Exiting...");
     process.exit(0);
 }
 
-async function handleReminders(date: Date) {
-    const reminderRows = await Spreadsheet.read(0, formatDateMDY(date), "Pending");
-    if (reminderRows.length === 0) return;
+async function handleReminders(dateA: Date, dateB: Date) {
+    const startDate = dateA < dateB ? dateA : dateB;
+    const endDate   = dateA < dateB ? dateB : dateA;
 
-    console.log(`Sending ${reminderRows.length} reminders...`);
+    const days: Date[] = [];
 
-    await Promise.all(reminderRows.map(row =>
-        Whatsapp.sendReminder(row.whatsapp, row.name)
-    ));
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        days.push(new Date(d));
+    }
+
+    let allRows: any[] = [];
+
+    for (const day of days) {
+        const rows = await Spreadsheet.read(0, formatDateMDY(day), "Pending");
+        if (rows.length > 0) {
+            allRows = allRows.concat(rows);
+        }
+    }
+
+    if (allRows.length === 0) return;
+
+    console.log(`Sending ${allRows.length} reminders...`);
+
+    await Promise.all(
+        allRows.map(row => Whatsapp.sendReminder(row.whatsapp, row.name))
+    );
 }
 
 async function handleStageChange(date: Date) {
     const changeStageRows = await Spreadsheet.read(0, formatDateMDY(date), "Pending");
     if (changeStageRows.length === 0) return;
-
-    console.log(`Updating ${changeStageRows.length} rows to Expired...`);
 
     await Promise.all(changeStageRows.map(row =>
         Spreadsheet.updateStage(0, "Expired", row.rowNumber)
