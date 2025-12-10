@@ -1,8 +1,6 @@
 {
   "name": "birthday-coupon-reminder",
   "scripts": {
-    "dev": "bun run --hot src/main.ts",
-    "start": "bun run src/main.ts",
     "build": "bun build --minify --outfile dist/main.js --target bun src/main.ts"
   },
   "dependencies": {
